@@ -17,6 +17,9 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+		if (env('APP_ENV') === 'production') {
+			URL::forceScheme('https');
+		}
         View::composer('layouts.sidebar', function ($view) {
             $view->with('units', Unit::all());
         });
@@ -25,7 +28,6 @@ class AppServiceProvider extends ServiceProvider
             if (Auth::check()) {
                 $notifications = DB::table('notifications')
                     ->join('user_notifications', 'notifications.id', '=', 'user_notifications.notification_id')
-                    // --- BARIS YANG HILANG DAN PERLU DITAMBAHKAN ---
                     ->join('users', 'notifications.author_id', '=', 'users.id') 
                     // ------------------------------------------------
                     ->where('user_notifications.user_id', Auth::id())
