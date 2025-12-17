@@ -16,7 +16,6 @@ class DashboardControllerTest extends TestCase
     {
         $user = User::factory()->create();
         
-        // Buat data dummy: 1 Unit dengan 3 Logbook
         $unit = Unit::factory()->create();
         Logbook::factory()->count(3)->create([
             'unit_id' => $unit->id,
@@ -27,10 +26,9 @@ class DashboardControllerTest extends TestCase
             ->actingAs($user)
             ->get(route('dashboard'));
 
-        $response->assertOk(); // Status 200
+        $response->assertOk();
         $response->assertViewIs('dashboard');
         
-        // Pastikan variabel penting dikirim ke view
         $response->assertViewHas(['units', 'totals', 'totalAll']);
     }
 }

@@ -11,9 +11,6 @@ class ToolControllerTest extends TestCase
 {
     use RefreshDatabase;
 
-    /**
-     * Helper: Buat User Biasa (Level 1)
-     */
     private function createRegularUser()
     {
         return User::factory()->create([
@@ -21,9 +18,6 @@ class ToolControllerTest extends TestCase
         ]);
     }
 
-    /**
-     * Helper: Buat Admin (Level 2)
-     */
     private function createAdminUser()
     {
         return User::factory()->create([
@@ -31,9 +25,6 @@ class ToolControllerTest extends TestCase
         ]);
     }
 
-    /**
-     * Test 1: Halaman Index Tools bisa dibuka
-     */
     public function test_tool_page_can_be_rendered(): void
     {
         $user = $this->createRegularUser();
@@ -41,39 +32,31 @@ class ToolControllerTest extends TestCase
 
         $response = $this
             ->actingAs($user)
-            ->get(route('tools.index')); // /manage/tools
+            ->get(route('tools.index'));
 
         $response->assertOk();
         $response->assertSee('Obeng');
     }
 
-    /**
-     * Test 2: Admin BISA MENAMBAH alat baru
-     * Logika Controller: Jika peralatan_id = 0, maka Create.
-     */
     public function test_admin_can_create_new_tool(): void
     {
         $admin = $this->createAdminUser();
 
         $response = $this
             ->actingAs($admin)
-            ->post('/manage/tools/update', [ // Sesuai route web.php Anda
-                'peralatan_id' => 0, // 0 artinya Buat Baru
+            ->post('/manage/tools/update', [
+                'peralatan_id' => 0,
                 'tools_name' => 'Tang Kombinasi',
             ]);
 
         $response->assertRedirect();
         $response->assertSessionHas('successMessage', 'Peralatan baru berhasil ditambahkan');
 
-        $this->assertDatabaseHas('alat', [ // Model Tool biasanya tabelnya 'alat' atau 'tools', sesuaikan jika error
+        $this->assertDatabaseHas('alat', [
             'name' => 'Tang Kombinasi',
         ]);
     }
 
-    /**
-     * Test 3: Admin BISA EDIT alat
-     * Logika Controller: Jika peralatan_id > 0, maka Update.
-     */
     public function test_admin_can_update_existing_tool(): void
     {
         $admin = $this->createAdminUser();
@@ -82,7 +65,7 @@ class ToolControllerTest extends TestCase
         $response = $this
             ->actingAs($admin)
             ->post('/manage/tools/update', [
-                'peralatan_id' => $tool->id, // ID > 0 artinya Update
+                'peralatan_id' => $tool->id,
                 'tools_name' => 'Nama Baru',
             ]);
 
@@ -95,14 +78,10 @@ class ToolControllerTest extends TestCase
         ]);
     }
 
-    /**
-     * Test 4: User Biasa DITOLAK saat menambah/edit
-     */
     public function test_regular_user_cannot_manage_tools(): void
     {
         $user = $this->createRegularUser();
 
-        // Coba Create
         $response = $this
             ->actingAs($user)
             ->post('/manage/tools/update', [
@@ -113,13 +92,9 @@ class ToolControllerTest extends TestCase
         $response->assertRedirect();
         $response->assertSessionHas('errorMessage', 'Anda tidak memiliki akses admin.');
         
-        // Pastikan tidak masuk DB
         $this->assertDatabaseMissing('alat', ['name' => 'Alat Ilegal']);
     }
 
-    /**
-     * Test 5: Admin BISA MENGHAPUS alat
-     */
     public function test_admin_can_delete_tool(): void
     {
         $admin = $this->createAdminUser();
@@ -137,9 +112,6 @@ class ToolControllerTest extends TestCase
         $this->assertDatabaseMissing('alat', ['id' => $tool->id]);
     }
 
-    /**
-     * Test 6: Validasi Input (Nama Kosong)
-     */
     public function test_tool_validation_error(): void
     {
         $admin = $this->createAdminUser();
@@ -148,12 +120,10 @@ class ToolControllerTest extends TestCase
             ->actingAs($admin)
             ->post('/manage/tools/update', [
                 'peralatan_id' => 0,
-                'tools_name' => '', // Kosong
+                'tools_name' => '',
             ]);
 
         $response->assertRedirect();
-        // Controller Anda mengambil error pertama dari validator
-        // "The tools name field is required."
         $response->assertSessionHas('errorMessage'); 
     }
 }

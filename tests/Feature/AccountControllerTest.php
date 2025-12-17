@@ -16,7 +16,6 @@ class AccountControllerTest extends TestCase
             'position' => 'Staff', 
             'joined' => now(),
             'fullname' => 'Old Fullname',
-            // Kita set email awal biar pasti
             'email' => 'original@example.com', 
         ]);
     }
@@ -35,10 +34,7 @@ class AccountControllerTest extends TestCase
     public function test_account_details_can_be_updated(): void
     {
         $user = $this->createUserWithPosition();
-
-        // Data baru yang SESUAI dengan AccountController Anda
-        // Controller Anda hanya menerima fullname, phone, address, dll.
-        // Controller Anda TIDAK menerima email atau name.
+		
         $newData = [
             'fullname' => 'Updated Fullname',
             'phone_number' => '08123456789',
@@ -61,12 +57,10 @@ class AccountControllerTest extends TestCase
 
         $user->refresh();
 
-        // Assert: Pastikan Fullname berubah sesuai input
         $this->assertSame('Updated Fullname', $user->fullname);
         $this->assertSame('08123456789', $user->phone_number);
         $this->assertSame('Jakarta', $user->city);
 
-        // Assert: Pastikan Email TIDAK berubah (karena controller tidak mengupdate email)
         $this->assertSame('original@example.com', $user->email);
     }
 }

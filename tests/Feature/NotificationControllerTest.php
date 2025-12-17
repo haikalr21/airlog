@@ -28,8 +28,6 @@ class NotificationControllerTest extends TestCase
 
     public function test_profile_notification_page_can_be_rendered(): void
     {
-		
-		$this->withoutExceptionHandling();
         $user = User::factory()->create([
             'name' => 'testuser',
             'joined' => now(), 

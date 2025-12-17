@@ -11,49 +11,36 @@ class UnitControllerTest extends TestCase
 {
     use RefreshDatabase;
 
-    /**
-     * Helper untuk membuat user biasa (Bukan Admin)
-     */
     private function createRegularUser()
     {
         return User::factory()->create([
-            'access_level' => 1, // Anggap 1 adalah user biasa
+            'access_level' => 1,
         ]);
     }
 
-    /**
-     * Helper untuk membuat user Admin
-     */
     private function createAdminUser()
     {
         return User::factory()->create([
-            'access_level' => 2, // Sesuai controller Anda, level 2 adalah Admin
+            'access_level' => 2,
         ]);
     }
 
-    /**
-     * Test 1: Pastikan halaman daftar unit bisa dibuka
-     */
     public function test_unit_page_can_be_rendered(): void
     {
         $user = $this->createRegularUser();
         
-        // Buat beberapa dummy unit
         Unit::create(['nama' => 'Unit A']);
         Unit::create(['nama' => 'Unit B']);
 
         $response = $this
             ->actingAs($user)
-            ->get(route('units.index')); // /manage/units
+            ->get(route('units.index'));
 
-        $response->assertOk(); // Status 200
-        $response->assertViewIs('manage.units.index'); // Pastikan view-nya benar
-        $response->assertSee('Unit A'); // Pastikan data muncul
+        $response->assertOk();
+        $response->assertViewIs('manage.units.index');
+        $response->assertSee('Unit A');
     }
 
-    /**
-     * Test 2: Admin BISA menambah unit baru
-     */
     public function test_admin_can_create_unit(): void
     {
         $admin = $this->createAdminUser();
@@ -64,21 +51,15 @@ class UnitControllerTest extends TestCase
                 'nama' => 'Unit Baru',
             ]);
 
-        // Cek redirect (biasanya back())
         $response->assertRedirect();
         
-        // Cek session successMessage (sesuai controller Anda)
         $response->assertSessionHas('successMessage', 'Unit berhasil dibuat!');
 
-        // Cek database
         $this->assertDatabaseHas('units', [
             'nama' => 'Unit Baru',
         ]);
     }
 
-    /**
-     * Test 3: User Biasa TIDAK BISA menambah unit (Harus ditolak)
-     */
     public function test_regular_user_cannot_create_unit(): void
     {
         $user = $this->createRegularUser();
@@ -89,19 +70,14 @@ class UnitControllerTest extends TestCase
                 'nama' => 'Unit Ilegal',
             ]);
 
-        // Di controller Anda, user biasa di-redirect back dengan errorMessage
         $response->assertRedirect();
         $response->assertSessionHas('errorMessage', 'Hanya Admin yang bisa menambah unit.');
 
-        // Pastikan TIDAK masuk database
         $this->assertDatabaseMissing('units', [
             'nama' => 'Unit Ilegal',
         ]);
     }
 
-    /**
-     * Test 4: Admin BISA mengupdate unit
-     */
     public function test_admin_can_update_unit(): void
     {
         $admin = $this->createAdminUser();
@@ -122,9 +98,6 @@ class UnitControllerTest extends TestCase
         ]);
     }
 
-    /**
-     * Test 5: Admin BISA menghapus unit
-     */
     public function test_admin_can_delete_unit(): void
     {
         $admin = $this->createAdminUser();
@@ -142,18 +115,15 @@ class UnitControllerTest extends TestCase
         ]);
     }
 
-    /**
-     * Test 6: Validasi Input (Nama Kosong)
-     */
     public function test_create_unit_validation_error(): void
     {
         $admin = $this->createAdminUser();
 
         $response = $this
             ->actingAs($admin)
-            ->from(route('units.index')) // Simulasi user ada di halaman index
+            ->from(route('units.index'))
             ->post(route('units.store'), [
-                'nama' => '', // Nama kosong
+                'nama' => '',
             ]);
 
         $response->assertRedirect(route('units.index'));

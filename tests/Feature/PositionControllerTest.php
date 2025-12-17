@@ -32,7 +32,6 @@ class PositionControllerTest extends TestCase
         $user = $this->createStaff();
         Position::factory()->count(3)->create();
 
-        // FIXED: Route name matches web.php ('position.index')
         $response = $this->actingAs($user)->get(route('position.index')); 
 
         $response->assertOk();
@@ -62,7 +61,6 @@ class PositionControllerTest extends TestCase
         $admin = $this->createAdmin();
         $position = Position::factory()->create(['name' => 'Old Name']);
 
-        // FIXED: Using $position->no as the primary key identifier
         $response = $this->actingAs($admin)->post(route('positions.update'), [
             'position_id' => $position->no, 
             'position_name' => 'New Name',
@@ -72,7 +70,7 @@ class PositionControllerTest extends TestCase
         $response->assertSessionHas('successMessage', 'Posisi berhasil diperbarui.');
 
         $this->assertDatabaseHas('positions', [
-            'no' => $position->no, // Check against the correct PK column
+            'no' => $position->no,
             'name' => 'New Name',
         ]);
     }
@@ -82,7 +80,6 @@ class PositionControllerTest extends TestCase
         $admin = $this->createAdmin();
         $position = Position::factory()->create();
 
-        // FIXED: Using $position->no as the primary key identifier
         $response = $this->actingAs($admin)->post(route('positions.delete'), [
             'position_id' => $position->no,
         ]);

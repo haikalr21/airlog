@@ -58,11 +58,9 @@ class AccountSecurityTest extends TestCase
                 'password_confirmation' => 'PasswordBaru123!',
             ]);
 
-        // Harusnya error di field 'current_password'
         $response->assertSessionHasErrors(['current_password']);
         
         $user->refresh();
-        // Password tidak boleh berubah
         $this->assertTrue(Hash::check('PasswordAsli123!', $user->password));
     }
 }

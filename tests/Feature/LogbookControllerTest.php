@@ -14,38 +14,31 @@ class LogbookControllerTest extends TestCase
 
     private function createAdminUser()
     {
-        // UBAH JADI STRING '2'
         return User::factory()->create(['access_level' => '2']); 
     }
 
     private function createRegularUser()
     {
-        // UBAH JADI STRING '0'
         return User::factory()->create(['access_level' => '0']); 
     }
 
     private function createApproverUser()
     {
-        // UBAH JADI STRING '1'
         return User::factory()->create(['access_level' => '1']); 
     }
 
-    /**
-     * Test 1: Halaman Index Logbook per Unit bisa dibuka
-     */
     public function test_logbook_index_can_be_rendered(): void
     {
         $user = $this->createRegularUser();
         $unit = Unit::create(['nama' => 'Unit Pembangkit']);
         
-        // Buat dummy logbook
         Logbook::create([
             'unit_id' => $unit->id,
             'judul' => 'Laporan Harian',
             'date' => now(),
             'shift' => '1',
             'created_by' => $user->id,
-            'is_approved' => 0 // Boolean di MySQL tinyint(1), jadi 0 aman
+            'is_approved' => 0
         ]);
 
         $response = $this
@@ -56,9 +49,6 @@ class LogbookControllerTest extends TestCase
         $response->assertSee('Laporan Harian');
     }
 
-    /**
-     * Test 2: User bisa membuat Logbook baru
-     */
     public function test_user_can_create_logbook(): void
     {
         $user = $this->createRegularUser();
@@ -82,12 +72,9 @@ class LogbookControllerTest extends TestCase
         ]);
     }
 
-    /**
-     * Test 3: Approver (Level 1/2) BISA Approve Logbook
-     */
     public function test_supervisor_can_approve_logbook(): void
     {
-        $supervisor = $this->createApproverUser(); // Level 1
+        $supervisor = $this->createApproverUser();
         $unit = Unit::create(['nama' => 'Unit Approve']);
         
         $logbook = Logbook::create([
@@ -113,12 +100,9 @@ class LogbookControllerTest extends TestCase
         ]);
     }
 
-    /**
-     * Test 4: User Biasa (Level 0) TIDAK BISA Approve
-     */
     public function test_regular_user_cannot_approve_logbook(): void
     {
-        $user = $this->createRegularUser(); // Level 0
+        $user = $this->createRegularUser();
         $unit = Unit::create(['nama' => 'Unit Deny']);
         
         $logbook = Logbook::create([
@@ -134,20 +118,15 @@ class LogbookControllerTest extends TestCase
             ->actingAs($user)
             ->put(route('logbook.approve', ['unit_id' => $unit->id, 'logbook_id' => $logbook->id]));
 
-        // Di controller, jika user biasa akses approve, dia diredirect dengan error
-        $response->assertRedirect();
+		$response->assertRedirect();
         $response->assertSessionHas('errorMessage', 'Anda tidak memiliki hak akses');
         
-        // Pastikan DB tidak berubah
         $this->assertDatabaseHas('logbooks', [
             'id' => $logbook->id,
             'is_approved' => 0,
         ]);
     }
 
-    /**
-     * Test 5: Pembuat Logbook BISA Menghapus Logbook Miliknya
-     */
     public function test_creator_can_delete_own_logbook(): void
     {
         $user = $this->createRegularUser();
@@ -171,13 +150,10 @@ class LogbookControllerTest extends TestCase
         $this->assertDatabaseMissing('logbooks', ['id' => $logbook->id]);
     }
 
-    /**
-     * Test 6: User Lain TIDAK BISA Menghapus Logbook Orang Lain
-     */
     public function test_user_cannot_delete_others_logbook(): void
     {
         $owner = User::factory()->create();
-        $hacker = $this->createRegularUser(); // User lain
+        $hacker = $this->createRegularUser();
         $unit = Unit::create(['nama' => 'Unit Aman']);
         
         $logbook = Logbook::create([
