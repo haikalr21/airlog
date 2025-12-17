@@ -197,7 +197,7 @@
             
             <p class="header-desc">
                 Dokumentasi teknis ini dirancang khusus untuk tim pengembang <strong>Aplikasi Mobile (Android)</strong>. 
-                Gunakan endpoint di bawah ini untuk sinkronisasi data Logbook, Manajemen User, dan Notifikasi secara real-time.
+                Gunakan endpoint di bawah ini untuk sinkronisasi data Logbook, Alat, Posisi, Manajemen User secara real-time.
             </p>
 
             <div class="base-url-box">
