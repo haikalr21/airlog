@@ -6,182 +6,274 @@ use App\Models\User;
 use App\Models\Position;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 
 class UserController extends Controller
 {
-    public function index()
+    public function technicians()
     {
-        // Fetch all users with pagination
-        $users = User::paginate(10);
-		$positions = Position::all();
-        return view('users.index', compact('users', 'positions'));
+        $technicians = User::where('technician', 1)->get(['id', 'name', 'fullname', 'gelar']);
+        
+        return response()->json([
+            'success' => true,
+            'data' => $technicians
+        ]);
     }
 
-    public function store(Request $request)
+    public function positions()
     {
-		$validated = $request->validate([
-			'modalAddressFirstName' => 'required|string',
-			'modalAddressLastName' => 'required|string',
-			'modalUsername' => 'required|alpha_num|unique:users,username',
-			'modalAddressEmail' => 'required|email|unique:users,email',  // Ensure email is unique
-			'modalAddressCountry' => 'required|string',
-			'inputGroupSelect01' => 'required|string',
-			'modalAddressAddress1' => 'required|string',
-			'modalPhoneNumber' => 'required|string',
-			'modalAddressCity' => 'required|string',
-			'modalAddressState' => 'required|string',
-			'modalAddressZipCode' => 'required|string',
-			'signature' => 'required|string',
-			'customRadioIcon-01' => 'required|integer',
-		]);
-
-		try {
-			// Retrieve validated data
-			$firstName = $request->input('modalAddressFirstName');
-			$lastName = $request->input('modalAddressLastName');
-			$username = strtolower($request->input('modalUsername'));
-			$gelar = $request->input('modalGelar', '');
-			$email = $request->input('modalAddressEmail');
-			$country = $request->input('modalAddressCountry');
-			$position = $request->input('inputGroupSelect01');
-			$address1 = $request->input('modalAddressAddress1');
-			$address2 = $request->input('modalAddressAddress2', '');
-			$phoneNumber = $request->input('modalPhoneNumber');
-			$city = $request->input('modalAddressCity');
-			$state = $request->input('modalAddressState');
-			$zipCode = $request->input('modalAddressZipCode');
-			$technician = $request->has('technician') ? 1 : 0;
-			$access_level = $request->input('customRadioIcon-01');
-			$signature = $request->input('signature');
-			$password = Hash::make('defaultpassword'); // Default password
-
-			// Check if email already exists
-			$existingUser = User::where('email', $email)->first();
-			if ($existingUser) {
-				return response()->json(['success' => false, 'message' => 'Email already exists. Please use a different email.']);
-			}
-
-			// Create the user
-			$user = User::create([
-				'name' => $firstName . ' ' . $lastName,
-				'gelar' => $gelar,
-				'email' => $email,
-				'password' => $password,
-				'access_level' => $access_level,
-				'profile_picture' => 'default.png',
-				'position' => $position,
-				'technician' => $technician,
-				'signature' => $signature,
-				'country' => $country,
-				'phone_number' => $phoneNumber,
-				'address' => $address1 . ' ' . $address2,
-				'city' => $city,
-				'state' => $state,
-				'zip_code' => $zipCode,
-				'joined' => now(),
-			]);
-
-			// Success response
-			$response = [
-				'success' => true,
-				'message' => 'User berhasil ditambahkan. Default password: "defaultpassword"',
-			];
-			session()->flash('successMessage', 'User added successfully.');
-
-			return response()->json(['success' => true, 'message' => 'User added successfully']);
-		} catch (\Exception $e) {
-			Log::error('Gagal menambahkan user: ' . $e->getMessage());
-			$response['message'] = 'Gagal menambahkan user';
-		}
-
-        // Validate the input
-        $validator = Validator::make($request->all(), [
-            'firstname' => 'required|string',
-            'lastname' => 'required|string',
-            'username' => 'required|string|unique:users,username',
-            'email' => 'required|email|unique:users,email',
-            'signature' => 'required|string',
-            'access_level' => 'required|integer',
-            'position' => 'required|string',
-            'address' => 'required|string',
-            'phone_number' => 'required|string',
-            'country' => 'required|string',
-            'city' => 'required|string',
-            'state' => 'required|string',
-            'zip_code' => 'required|string',
+        $positions = Position::all();
+        
+        return response()->json([
+            'success' => true,
+            'data' => $positions
         ]);
+    }
+
+    public function index(Request $request)
+    {
+        if (auth()->user()->access_level != 2) {
+            if ($request->wantsJson()) {
+                return response()->json(['message' => 'Access denied.'], 403);
+            }
+            abort(403, 'Access denied. Only Staff and Admin can manage users.');
+        }
+        
+        $users = User::with('position')->paginate(10);
+        $positions = Position::all();
+        
+        $users->getCollection()->makeHidden(['password', 'remember_token']);
+
+        if ($request->wantsJson()) {
+            return response()->json($users);
+        }
+
+        return view('users.index', compact('users', 'positions'));
     }
 
     public function edit($id)
     {
-        // Get user details
-        $user = User::findOrFail($id);
-        return response()->json(['success' => true, 'user' => $user]);
+        try {
+            $user = User::findOrFail($id);
+            
+            $nameParts = explode(' ', $user->fullname, 2);
+            $firstName = $nameParts[0] ?? '';
+            $lastName = $nameParts[1] ?? '';
+            
+            return response()->json([
+                'success' => true,
+                'user' => [
+                    'id' => $user->id,
+                    'first_name' => $firstName,
+                    'last_name' => $lastName,
+                    'gelar' => $user->gelar,
+                    'username' => $user->name,
+                    'email' => $user->email,
+                    'position' => $user->position,
+                    'country' => $user->country,
+                    'address1' => $user->address,
+                    'address2' => '', 
+                    'phone_number' => $user->phone_number,
+                    'city' => $user->city,
+                    'state' => $user->state,
+                    'zip_code' => $user->zip_code,
+                    'technician' => $user->technician,
+                    'access_level' => $user->access_level,
+                    'signature' => $user->signature,
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'User not found'], 404);
+        }
     }
 
+    public function store(Request $request)
+    {
+        if (auth()->user()->access_level != 2) {
+            return response()->json(['success' => false, 'message' => 'Hanya Admin yang bisa menambah user.'], 403);
+        }
+        
+        try {
+            $customAttributes = [
+                'modalAddressFirstName' => 'First Name',
+                'modalAddressLastName'  => 'Last Name',
+                'modalUsername'         => 'Username',
+                'modalAddressEmail'     => 'Email',
+                'position'              => 'Position',
+                'signature'             => 'Signature',
+            ];
+
+            $validated = $request->validate([
+                'modalAddressFirstName' => 'required|string|max:255',
+                'modalAddressLastName'  => 'required|string|max:255',
+                'modalGelar'            => 'nullable|string|max:50',
+                'modalUsername'         => 'required|alpha_num|unique:users,name|max:255',
+                'modalAddressEmail'     => 'required|email|unique:users,email|max:255',
+                'position'              => 'required|exists:positions,no',
+                'modalAddressCountry'   => 'required|string|max:255',
+                'modalAddressAddress1'  => 'required|string|max:255',
+                'modalAddressAddress2'  => 'nullable|string|max:255',
+                'modalPhoneNumber'      => 'required|string|max:20',
+                'modalAddressCity'      => 'required|string|max:255',
+                'modalAddressState'     => 'required|string|max:255',
+                'modalAddressZipCode'   => 'required|string|max:10',
+                'signature'             => 'required|string', 
+                'customRadioIcon-01'    => 'required|integer|in:0,1,2',
+            ], [
+                'modalAddressEmail.unique' => 'Email address is already in use.',
+                'modalUsername.unique'     => 'Username is already taken.',
+                'position.required'        => 'Position is required.',
+                'position.exists'          => 'Selected position is invalid.',
+            ], $customAttributes);            
+            
+            $fullName = $validated['modalAddressFirstName'] . ' ' . $validated['modalAddressLastName'];
+
+            $user = User::create([
+                'name'            => strtolower($validated['modalUsername']),
+                'fullname'        => $fullName,
+                'gelar'           => $validated['modalGelar'] ?? '',
+                'email'           => $validated['modalAddressEmail'],
+                'password'        => Hash::make('password123'),
+                'access_level'    => $validated['customRadioIcon-01'],
+                'position'        => $validated['position'],
+                'profile_picture' => 'default.png',
+                'technician'      => $request->has('technician') ? 1 : 0,
+                'signature'       => $validated['signature'],
+                'country'         => $validated['modalAddressCountry'],
+                'phone_number'    => $validated['modalPhoneNumber'],
+                'address'         => $validated['modalAddressAddress1'] . ' ' . ($validated['modalAddressAddress2'] ?? ''),
+                'city'            => $validated['modalAddressCity'],
+                'state'           => $validated['modalAddressState'],
+                'zip_code'        => $validated['modalAddressZipCode'],
+                'joined'          => now(),
+            ]);
+            
+            $user->makeHidden(['password', 'remember_token']);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'User created successfully.',
+                'data' => $user
+            ]);
+
+        } catch (ValidationException $e) {
+            $firstError = collect($e->errors())->flatten()->first();
+            return response()->json([
+                'success' => false,
+                'message' => $firstError,
+                'errors'  => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Create User Error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'System error: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    
     public function update(Request $request, $id)
     {
-        // Validate the input
-        $validator = Validator::make($request->all(), [
-            'firstname' => 'required|string',
-            'lastname' => 'required|string',
-            'username' => 'required|string|unique:users,username,' . $id,
-            'email' => 'required|email|unique:users,email,' . $id,
-            'signature' => 'required|string',
-            'access_level' => 'required|integer',
-            'position' => 'required|string',
-            'address' => 'required|string',
-            'phone_number' => 'required|string',
-            'country' => 'required|string',
-            'city' => 'required|string',
-            'state' => 'required|string',
-            'zip_code' => 'required|string',
-        ]);
+        try {
+            if (auth()->user()->access_level != 2) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized.'], 403);
+            }
+            $user = User::findOrFail($id);
+            
+            $customAttributes = [
+                'editFirstName' => 'First Name',
+                'editLastName'  => 'Last Name',
+                'editUsername'  => 'Username',
+                'editEmail'     => 'Email',
+                'position'      => 'Position',
+                'editSignature' => 'Signature',
+            ];
 
-        // If validation fails
-        if ($validator->fails()) {
-            return response()->json(['success' => false, 'message' => $validator->errors()->first()]);
+            $validated = $request->validate([
+                'editFirstName'   => 'required|string|max:255',
+                'editLastName'    => 'required|string|max:255',
+                'editGelar'       => 'nullable|string|max:50',
+                'editUsername'    => 'required|string|unique:users,name,' . $id . ',id|max:255',
+                'editEmail'       => 'required|email|unique:users,email,' . $id . ',id|max:255',
+                'position'        => 'required|exists:positions,no',
+                'editCountry'     => 'required|string|max:255',
+                'editAddress1'    => 'required|string|max:255',
+                'editAddress2'    => 'nullable|string|max:255',
+                'editPhoneNumber' => 'required|string|max:20',
+                'editCity'        => 'required|string|max:255',
+                'editState'       => 'required|string|max:255',
+                'editZipCode'     => 'required|string|max:10',
+                'editSignature'   => 'required|string',
+                'editRadioIcon-01'=> 'required|integer|in:0,1,2',
+            ], [
+                'editEmail.unique' => 'Email address is already in use.',
+                'editUsername.unique' => 'Username is already taken.',
+                'position.required' => 'Position is required.',
+                'position.exists' => 'Selected position is invalid.',
+            ], $customAttributes);
+
+            $fullName = $validated['editFirstName'] . ' ' . $validated['editLastName'];
+
+            $user->update([
+                'name'         => strtolower($validated['editUsername']),
+                'fullname'     => $fullName,
+                'gelar'        => $validated['editGelar'] ?? '',
+                'email'        => $validated['editEmail'],
+                'access_level' => $validated['editRadioIcon-01'],
+                'position'     => $validated['position'],
+                'technician'   => $request->has('editTechnician') ? 1 : 0,
+                'signature'    => $validated['editSignature'],
+                'country'      => $validated['editCountry'],
+                'phone_number' => $validated['editPhoneNumber'],
+                'address'      => $validated['editAddress1'] . ' ' . ($validated['editAddress2'] ?? ''),
+                'city'         => $validated['editCity'],
+                'state'        => $validated['editState'],
+                'zip_code'     => $validated['editZipCode'],
+            ]);
+            
+            $user->makeHidden(['password', 'remember_token']);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'User updated successfully',
+                'data' => $user
+            ]);
+
+        } catch (ValidationException $e) {
+            $firstError = collect($e->errors())->flatten()->first();
+            return response()->json([
+                'success' => false,
+                'message' => $firstError,
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Update User Error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'System error: ' . $e->getMessage()
+            ], 500);
         }
-
-        // Find user and update
-        $user = User::findOrFail($id);
-        $user->fullname = $request->firstname . ' ' . $request->lastname;
-        $user->username = $request->username;
-        $user->email = $request->email;
-        $user->signature = $request->signature;
-        $user->access_level = $request->access_level;
-        $user->position = $request->position;
-        $user->address = $request->address;
-        $user->phone_number = $request->phone_number;
-        $user->country = $request->country;
-        $user->city = $request->city;
-        $user->state = $request->state;
-        $user->zip_code = $request->zip_code;
-        $user->save();
-
-        // Flash success message to the session
-        session()->flash('successMessage', 'User updated successfully.');
-
-        return response()->json(['success' => true, 'message' => 'User updated successfully']);
     }
-
+    
     public function destroy($id)
     {
-        if (Auth::id() == $id) {
-            // Flash error message to session
-            session()->flash('errorMessage', 'You cannot delete yourself.');
+        try {
+            if (auth()->user()->access_level != 2) {
+                return response()->json(['success' => false, 'message' => 'Hanya Admin yang bisa menghapus user.'], 403);
+            }
+            if (Auth::id() == $id) {
+                return response()->json(['success' => false, 'message' => 'You cannot delete yourself.'], 403);
+            }
 
-            return response()->json(['success' => false, 'message' => 'You cannot delete yourself.']);
+            $user = User::findOrFail($id);
+            $user->delete();
+
+            return response()->json(['success' => true, 'message' => 'User berhasil dihapus']);
+
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Gagal menghapus user'], 500);
         }
-
-        // Find user and delete
-        $user = User::findOrFail($id);
-        $user->delete();
-
-        // Flash success message to session
-        session()->flash('successMessage', 'User deleted successfully.');
-
-        return response()->json(['success' => true, 'message' => 'User deleted successfully']);
     }
 }
