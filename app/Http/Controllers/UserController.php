@@ -215,6 +215,9 @@ class UserController extends Controller
             ], $customAttributes);
 
             $fullName = $validated['editFirstName'] . ' ' . $validated['editLastName'];
+			$technician = $request->wantsJson() 
+				? (int) $request->input('editTechnician', 0) 
+				: ($request->has('editTechnician') ? 1 : 0);
 
             $user->update([
                 'name'         => strtolower($validated['editUsername']),
@@ -223,7 +226,7 @@ class UserController extends Controller
                 'email'        => $validated['editEmail'],
                 'access_level' => $validated['editRadioIcon-01'],
                 'position'     => $validated['position'],
-                'technician' => $request->input('editTechnician') == '1' ? 1 : 0,
+                'technician'   => $technician,
                 'signature'    => $validated['editSignature'],
                 'country'      => $validated['editCountry'],
                 'phone_number' => $validated['editPhoneNumber'],
