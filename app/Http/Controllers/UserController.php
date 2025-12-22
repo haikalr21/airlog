@@ -223,7 +223,7 @@ class UserController extends Controller
                 'email'        => $validated['editEmail'],
                 'access_level' => $validated['editRadioIcon-01'],
                 'position'     => $validated['position'],
-                'technician' => $request->filled('editTechnician') ? 1 : 0,
+                'technician' => $request->input('editTechnician') == '1' ? 1 : 0,
                 'signature'    => $validated['editSignature'],
                 'country'      => $validated['editCountry'],
                 'phone_number' => $validated['editPhoneNumber'],
